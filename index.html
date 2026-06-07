@@ -5,11 +5,11 @@
     <title>Hypothesis Testing & Confidence Intervals</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { font-family: sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        body { font-family: sans-serif; max-width: 800px; margin: 0 auto; padding:h 20px; }
         .controls { background: #f4f4f4; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 20px; }
         .control-group { display: flex; flex-direction: column; }
         input[type="range"] { width: 150px; }
-        canvas { max-height: 250px; margin-bottom: 20px; }
+        .chart-container { position: relative; height: 250px; margin-bottom: 20px; }
     </style>
 </head>
 <body>
@@ -40,15 +40,15 @@
 
     <div>
         <h4 style="margin-bottom: 0;">1. Biological Reality (Populations)</h4>
-        <canvas id="popChart"></canvas>
+        <div class="chart-container"><canvas id="popChart"></canvas></div>
     </div>
     <div>
         <h4 style="margin-bottom: 0;">2. Clinical Observation (Sample & 95% CI)</h4>
-        <canvas id="ciChart"></canvas>
+        <div class="chart-container"><canvas id="ciChart"></canvas></div>
     </div>
     <div>
         <h4 style="margin-bottom: 0;">3. Statistical Engine (Sampling Distributions of the Mean)</h4>
-        <canvas id="sampChart"></canvas>
+        <div class="chart-container"><canvas id="sampChart"></canvas></div>
     </div>
 
     <script>
