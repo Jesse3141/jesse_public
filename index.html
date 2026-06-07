@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Hypothesis Testing & Confidence Intervals</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .controls { background: #f4f4f4; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 20px; }
+        .control-group { display: flex; flex-direction: column; }
+        input[type="range"] { width: 150px; }
+        canvas { max-height: 250px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+
+    <h2>Statistical Inference: Populations to Samples</h2>
+    
+    <div class="controls">
+        <div class="control-group">
+            <label>H0 Mean: <span id="h0-val">100</span></label>
+            <input type="range" id="h0-slider" min="80" max="120" value="100">
+        </div>
+        <div class="control-group">
+            <label>H1 Mean: <span id="h1-val">110</span></label>
+            <input type="range" id="h1-slider" min="80" max="120" value="110">
+        </div>
+        <div class="control-group">
+            <label>Pop Std Dev (σ): <span id="sd-val">15</span></label>
+            <input type="range" id="sd-slider" min="5" max="40" value="15">
+        </div>
+        <div class="control-group">
+            <label>Sample Size (n): <span id="n-val">10</span></label>
+            <input type="range" id="n-slider" min="2" max="100" value="10">
+        </div>
+        <div class="control-group">
+            <button id="draw-sample" style="margin-top: 15px; padding: 5px 10px; cursor: pointer;">Draw New Sample</button>
+        </div>
+    </div>
+
+    <div>
+        <h4 style="margin-bottom: 0;">1. Biological Reality (Populations)</h4>
+        <canvas id="popChart"></canvas>
+    </div>
+    <div>
+        <h4 style="margin-bottom: 0;">2. Clinical Observation (Sample & 95% CI)</h4>
+        <canvas id="ciChart"></canvas>
+    </div>
+    <div>
+        <h4 style="margin-bottom: 0;">3. Statistical Engine (Sampling Distributions of the Mean)</h4>
+        <canvas id="sampChart"></canvas>
+    </div>
+
+    <script>
+        // Math utility functions for Normal Distribution
+        function normalPDF(x, mean, stdDev) {
+            const variance = stdDev * stdDev;
+            const exponent = Math.exp(-Math.pow(x - mean, 2) / (2 * variance));
+            return (1 / Math.sqrt(2 * Math.PI * variance)) * exponent;
+        }
+
+        function generateCurveData(mean, sd) {
+            const data = [];
+            for (let x = 60; x <= 140; x += 0.5) {
+                data.push({ x: x, y: normalPDF(x, mean, sd) });
+            }
+            return data;
+        }
+
+        // Box-Muller transform for normal random variables
+        function randomNormal(mean, sd) {
+            let u = 1 - Math.random(); 
+            let v = Math.random();
+            let z = Math.sqrt( -2.0 * Math.log( u ) ) * Math.cos( 2.0 * Math.PI * v );
+            return z * sd + mean;
+        }
+
+        let popChart, ciChart, sampChart;
+        let currentSampleMean = 110;
+
+        function initCharts() {
+            const commonOptions = {
+                responsive: true, maintainAspectRatio: false,
+                animation: { duration: 0 },
+                scales: { 
+                    x: { type: 'linear', min: 60, max: 140 },
+                    y: { display: false } 
+                },
+                plugins: { legend: { display: false }, tooltip: { enabled: false } }
+            };
+
+            const ctxPop = document.getElementById('popChart').getContext('2d');
+            popChart = new Chart(ctxPop, { type: 'line', options: commonOptions, data: { datasets: [] } });
+
+            const ctxCi = document.getElementById('ciChart').getContext('2d');
+            ciChart = new Chart(ctxCi, { 
+                type: 'scatter', 
+                options: { ...commonOptions, scales: { x: { min: 60, max: 140 }, y: { min: 0, max: 2, display: false } } }, 
+                data: { datasets: [] } 
+            });
+
+            const ctxSamp = document.getElementById('sampChart').getContext('2d');
+            sampChart = new Chart(ctxSamp, { type: 'line', options: commonOptions, data: { datasets: [] } });
+        }
+
+        function updateSim() {
+            const h0 = parseFloat(document.getElementById('h0-slider').value);
+            const h1 = parseFloat(document.getElementById('h1-slider').value);
+            const sd = parseFloat(document.getElementById('sd-slider').value);
+            const n = parseFloat(document.getElementById('n-slider').value);
+            const se = sd / Math.sqrt(n);
+
+            document.getElementById('h0-val').innerText = h0;
+            document.getElementById('h1-val').innerText = h1;
+            document.getElementById('sd-val').innerText = sd;
+            document.getElementById('n-val').innerText = n;
+
+            // 1. Update Population Chart
+            popChart.data.datasets = [
+                { label: 'H0 Pop', data: generateCurveData(h0, sd), borderColor: 'gray', fill: true, backgroundColor: 'rgba(200,200,200,0.2)', pointRadius: 0 },
+                { label: 'H1 Pop', data: generateCurveData(h1, sd), borderColor: 'blue', fill: true, backgroundColor: 'rgba(0,0,255,0.1)', pointRadius: 0 }
+            ];
+            popChart.update();
+
+            // 2. Update CI Chart (Middle)
+            const marginOfError = 1.96 * se;
+            ciChart.data.datasets = [
+                { type: 'line', data: [{x: currentSampleMean - marginOfError, y: 1}, {x: currentSampleMean + marginOfError, y: 1}], borderColor: 'black', borderWidth: 3, pointRadius: 0 },
+                { type: 'scatter', data: [{x: currentSampleMean, y: 1}], backgroundColor: 'red', pointRadius: 8 }
+            ];
+            ciChart.update();
+
+            // 3. Update Sampling Distribution Chart
+            sampChart.data.datasets = [
+                { label: 'H0 Samp Dist', data: generateCurveData(h0, se), borderColor: 'gray', fill: true, backgroundColor: 'rgba(200,200,200,0.5)', pointRadius: 0 },
+                { label: 'H1 Samp Dist', data: generateCurveData(h1, se), borderColor: 'blue', fill: true, backgroundColor: 'rgba(0,0,255,0.3)', pointRadius: 0 }
+            ];
+            sampChart.update();
+        }
+
+        document.getElementById('draw-sample').addEventListener('click', () => {
+            const h1 = parseFloat(document.getElementById('h1-slider').value);
+            const sd = parseFloat(document.getElementById('sd-slider').value);
+            const n = parseFloat(document.getElementById('n-slider').value);
+            
+            // Generate a real sample mean drawn from H1
+            let sum = 0;
+            for(let i=0; i<n; i++) sum += randomNormal(h1, sd);
+            currentSampleMean = sum / n;
+            
+            updateSim();
+        });
+
+        document.querySelectorAll('input').forEach(el => el.addEventListener('input', updateSim));
+
+        initCharts();
+        updateSim();
+    </script>
+</body>
+</html>
